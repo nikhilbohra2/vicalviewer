@@ -3,468 +3,632 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Certificate Policy Generator</title>
+<title>VICAL Viewer — Trust List Inspector</title>
 <style>
   :root {
-    --navy: #101B2D;
-    --navy-2: #182740;
-    --navy-3: #223252;
-    --paper: #F3F4F7;
-    --card: #FFFFFF;
-    --line: #E1E3E8;
-    --line-soft: #ECEDF1;
-    --text: #1B2027;
-    --text-dim: #6B707B;
-    --text-faint: #9A9FA8;
-    --brass: #A9782E;
-    --brass-soft: #F4ECDA;
-    --brass-dark: #8A611F;
-    --danger: #B4432F;
-    --danger-soft: #F6E7E3;
-    --success: #2F6F52;
-    --success-soft: #E4EEE9;
+    --ink: #30006D;
+    --ink-soft: #430099;
+    --paper: #FFFFFF;
+    --paper-dim: #F4F1FB;
+    --line: #DCD3EF;
+    --line-soft: #EAE4F7;
+    --teal: #430099;
+    --teal-soft: #E1DDF3;
+    --lavender: #8A69D7;
+    --rust: #B4432F;
+    --rust-soft: #F6E7E3;
+    --amber: #A8721F;
+    --amber-soft: #F3E9D6;
+    --text: #24262B;
+    --text-dim: #6B6D74;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
     --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
+
   * { box-sizing: border-box; }
-  html, body { height: 100%; }
+
   body {
     margin: 0;
     background: var(--paper);
     color: var(--text);
     font-family: var(--sans);
-    font-size: 14px;
     line-height: 1.5;
   }
 
-  .app-shell {
+  .topbar {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 22px 28px;
     display: flex;
-    height: 100vh;
-    overflow: hidden;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
   }
-
-  /* ---------------- Sidebar ---------------- */
-  .sidebar {
-    width: 300px;
-    flex-shrink: 0;
-    background: var(--navy);
-    color: #C9CEDA;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-  .brand {
-    padding: 20px 18px 14px;
+  .topbar .brand {
     font-family: var(--serif);
-    font-size: 17px;
-    color: #F2F0E9;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 22px;
+    letter-spacing: 0.2px;
   }
-  .brand .sub {
+  .topbar .brand .mark {
+    display: inline-block;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--lavender);
+    margin-right: 10px;
+    box-shadow: 0 0 0 3px rgba(138,105,215,0.3);
+  }
+  .topbar .tag {
+    font-size: 12.5px;
+    color: #AFB6C4;
     font-family: var(--mono);
-    font-size: 10.5px;
-    color: #7F87A0;
-    margin-top: 3px;
-    letter-spacing: 0.02em;
   }
 
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 30px 24px 80px;
+  }
+
+  /* Drop zone */
   #dropzone {
-    margin: 14px;
-    border: 1.5px dashed rgba(255,255,255,0.18);
-    border-radius: 4px;
-    padding: 18px 12px;
+    border: 1.5px dashed var(--line);
+    border-radius: 3px;
+    background: var(--paper-dim);
+    padding: 46px 28px;
     text-align: center;
     cursor: pointer;
     transition: border-color 120ms ease, background 120ms ease;
-    flex-shrink: 0;
   }
-  #dropzone.dragging { border-color: var(--brass); background: rgba(169,120,46,0.12); }
-  #dropzone .dz-title { font-size: 13px; color: #E4E6ED; margin-bottom: 3px; }
-  #dropzone .dz-sub { font-size: 11px; color: #7F87A0; }
-  #fileInput { display: none; }
-
-  .sidebar-section-label {
-    padding: 6px 18px;
-    font-size: 10.5px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: #6B7488;
-    flex-shrink: 0;
+  #dropzone.dragging {
+    border-color: var(--teal);
+    background: var(--teal-soft);
   }
-
-  #certList {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0 8px 12px;
-  }
-  .cert-list-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 10px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-bottom: 2px;
-  }
-  .cert-list-item:hover { background: var(--navy-2); }
-  .cert-list-item.active { background: var(--navy-3); }
-  .cert-list-item.active .cl-name { color: #FFFFFF; }
-  .cl-row { display: flex; align-items: center; gap: 7px; }
-  .cl-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brass); flex-shrink: 0; }
-  .cl-dot.error { background: var(--danger); }
-  .cl-name {
-    font-size: 12.5px;
-    color: #DADDE6;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .cl-sub {
-    font-size: 10.5px;
-    font-family: var(--mono);
-    color: #6B7488;
-    padding-left: 13px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .cl-remove {
-    margin-left: auto;
-    color: #6B7488;
-    font-size: 13px;
-    padding: 0 2px;
-    flex-shrink: 0;
-  }
-  .cl-remove:hover { color: var(--danger); }
-
-  .empty-list-hint {
-    padding: 18px 14px;
-    font-size: 12px;
-    color: #6B7488;
-    line-height: 1.6;
-  }
-
-  /* ---------------- Main ---------------- */
-  .main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    height: 100%;
-  }
-  .topbar {
-    flex-shrink: 0;
-    padding: 14px 28px;
-    background: var(--card);
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .topbar .status {
-    font-size: 12.5px;
-    color: var(--text-dim);
-    font-family: var(--mono);
-  }
-  .btn {
-    font-family: var(--sans);
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 3px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .btn-primary { background: var(--brass); color: #FFFFFF; }
-  .btn-primary:hover { background: var(--brass-dark); }
-  .btn-outline { background: var(--card); color: var(--text); border-color: var(--line); }
-  .btn-outline:hover { border-color: var(--text-faint); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 26px 28px 60px;
-  }
-  .content-inner { max-width: 900px; margin: 0 auto; }
-
-  .empty-state {
-    max-width: 420px;
-    margin: 80px auto;
-    text-align: center;
-    color: var(--text-dim);
-  }
-  .empty-state h2 {
+  #dropzone h2 {
     font-family: var(--serif);
     font-weight: normal;
-    font-size: 19px;
-    color: var(--text);
-    margin-bottom: 8px;
+    font-size: 21px;
+    margin: 0 0 8px;
   }
-  .empty-state p { font-size: 13px; }
-
-  .card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 20px 22px;
-    margin-bottom: 20px;
+  #dropzone p {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin: 0 0 18px;
   }
-  .card h3 {
-    margin: 0 0 14px;
+  #dropzone .btn {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 20px;
+    border-radius: 2px;
+    font-size: 13.5px;
+    cursor: pointer;
+  }
+  #dropzone .hint {
+    margin-top: 14px;
     font-size: 12px;
+    color: #96988F;
+    font-family: var(--mono);
+  }
+  #fileInput { display: none; }
+
+  #error {
+    display: none;
+    margin-top: 18px;
+    background: var(--rust-soft);
+    border: 1px solid #E3C4BA;
+    color: #7A2E1E;
+    padding: 14px 16px;
+    border-radius: 3px;
+    font-size: 13.5px;
+  }
+
+  #app { display: none; }
+
+  /* Summary panel */
+  .summary-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin: 6px 0 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .summary-head h1 {
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: normal;
+    margin: 0 0 4px;
+  }
+  .summary-head .sub {
+    color: var(--text-dim);
+    font-size: 13.5px;
+  }
+  .reset-link {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+  }
+  .reset-link:hover { color: var(--text); }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--line-soft);
+    border: 1px solid var(--line-soft);
+    margin-bottom: 26px;
+  }
+  .meta-cell {
+    background: var(--paper);
+    padding: 13px 16px;
+  }
+  .meta-cell .k {
+    font-size: 10.5px;
     letter-spacing: 0.04em;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .meta-cell .v {
+    font-size: 14.5px;
+    font-family: var(--mono);
+    word-break: break-word;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px 2px 7px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    font-family: var(--sans);
+  }
+  .status-pill.ok { background: var(--teal-soft); color: var(--teal); }
+  .status-pill.warn { background: var(--amber-soft); color: var(--amber); }
+  .status-pill.bad { background: var(--rust-soft); color: var(--rust); }
+  .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  section.block { margin-bottom: 30px; }
+  section.block > h3 {
+    font-size: 12px;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-dim);
+    margin: 0 0 10px;
     font-weight: 600;
   }
-  .card h3 .file-name {
-    text-transform: none;
-    letter-spacing: 0;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    margin-left: 8px;
-  }
 
-  /* Certificate detail grid */
+  /* Signer card */
+  .signer-card {
+    border: 1px solid var(--line);
+    background: var(--paper);
+    padding: 16px 18px;
+    border-radius: 3px;
+  }
+  .signer-card .row { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; font-size: 13.5px; }
+  .signer-card .row:last-child { margin-bottom: 0; }
+  .signer-card .row .k { color: var(--text-dim); min-width: 130px; }
+  .signer-card .row .v { font-family: var(--mono); text-align: right; word-break: break-word; }
+
+  /* Cert list */
+  .cert-item {
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    margin-bottom: 10px;
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .cert-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    cursor: pointer;
+  }
+  .cert-header:hover { background: var(--paper-dim); }
+  .cert-header .country {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 3px 7px;
+    border-radius: 2px;
+    min-width: 28px;
+    text-align: center;
+  }
+  .cert-header .name-block { flex: 1; min-width: 200px; }
+  .cert-header .cn {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .cert-header .org {
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .cert-header .validity {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .cert-header .chev {
+    font-size: 13px;
+    color: var(--text-dim);
+    transition: transform 120ms ease;
+    width: 14px;
+    text-align: center;
+  }
+  .cert-item.open .cert-header .chev { transform: rotate(90deg); }
+
+  .cert-body {
+    display: none;
+    border-top: 1px solid var(--line-soft);
+    padding: 18px;
+    background: var(--paper-dim);
+  }
+  .cert-item.open .cert-body { display: block; }
+
   .detail-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px 24px;
+    gap: 18px;
+    margin-bottom: 18px;
   }
-  @media (max-width: 720px) { .detail-grid { grid-template-columns: 1fr; } }
-  .detail-field .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin-bottom: 3px; }
-  .detail-field .v { font-family: var(--mono); font-size: 12.5px; word-break: break-word; }
-  .detail-field .v.full-row { grid-column: 1 / -1; }
-  .validity-pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 1px 8px 1px 6px; border-radius: 20px; font-size: 11px; font-weight: 600; font-family: var(--sans);
-    margin-left: 8px; vertical-align: middle;
-  }
-  .validity-pill.ok { background: var(--success-soft); color: var(--success); }
-  .validity-pill.bad { background: var(--danger-soft); color: var(--danger); }
-  .validity-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .parse-error-msg { font-size: 12.5px; color: var(--danger); }
+  @media (max-width: 640px) { .detail-grid { grid-template-columns: 1fr; } }
 
-  /* Policy editor form */
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px 18px;
-    margin-bottom: 6px;
+  .field {
+    margin-bottom: 10px;
   }
-  @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
-  .form-field { display: flex; flex-direction: column; gap: 5px; }
-  .form-field.full { grid-column: 1 / -1; }
-  .form-field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); font-weight: 600; }
-  .form-field input[type=text] {
+  .field .k {
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .field .v {
+    font-size: 13.5px;
     font-family: var(--mono);
-    font-size: 13px;
-    padding: 8px 10px;
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    background: var(--paper);
-    color: var(--text);
+    word-break: break-all;
   }
-  .form-field input[type=text]:focus { outline: none; border-color: var(--brass); background: var(--card); }
+  .field .v.wrap { word-break: break-word; font-family: var(--sans); }
 
-  .tag-input-box {
-    display: flex; flex-wrap: wrap; gap: 6px;
-    padding: 7px 8px;
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    background: var(--paper);
-    min-height: 38px;
-  }
-  .tag-input-box:focus-within { border-color: var(--brass); background: var(--card); }
-  .tag-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--brass-soft); color: var(--brass-dark);
-    font-family: var(--mono); font-size: 12px;
-    padding: 3px 4px 3px 9px;
-    border-radius: 20px;
-  }
-  .tag-chip .x { cursor: pointer; font-size: 12px; opacity: 0.7; padding: 0 4px; }
-  .tag-chip .x:hover { opacity: 1; }
-  .tag-input-box input {
-    border: none; outline: none; background: transparent;
-    font-family: var(--mono); font-size: 12.5px; flex: 1; min-width: 100px;
-    padding: 3px 4px;
-  }
-  .tag-hint { font-size: 10.5px; color: var(--text-faint); margin-top: 4px; }
-
-  /* JSON preview / raw edit */
-  .json-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .json-error {
-    display: none;
-    background: var(--danger-soft); color: var(--danger);
-    font-size: 12px; font-family: var(--mono);
-    padding: 8px 10px; border-radius: 3px; margin-bottom: 10px;
-  }
-  #jsonTextarea {
+  table.ext-table {
     width: 100%;
-    min-height: 260px;
-    resize: vertical;
-    background: var(--navy);
-    color: #D6E1EE;
-    font-family: var(--mono);
+    border-collapse: collapse;
     font-size: 12.5px;
-    line-height: 1.6;
-    border: none;
-    border-radius: 4px;
-    padding: 14px 16px;
-    tab-size: 2;
+    margin-bottom: 4px;
   }
-  #jsonTextarea:focus { outline: 2px solid var(--brass); outline-offset: -2px; }
+  table.ext-table th {
+    text-align: left;
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  table.ext-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+    font-family: var(--mono);
+  }
+  table.ext-table td.crit { font-family: var(--sans); }
+  .crit-yes { color: var(--rust); font-weight: 600; }
+  .crit-no { color: var(--text-dim); }
 
-  .action-row {
-    display: flex; gap: 10px; flex-wrap: wrap;
+  .metadata-card {
+    display: flex;
+    gap: 14px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 14px 16px;
     margin-top: 4px;
   }
-
-  .toast {
-    position: fixed; bottom: 22px; right: 22px;
-    background: var(--navy); color: #fff;
-    padding: 10px 18px; border-radius: 4px;
-    font-size: 12.5px; font-family: var(--mono);
-    box-shadow: 0 4px 18px rgba(0,0,0,0.2);
-    opacity: 0; transform: translateY(6px);
-    transition: opacity 160ms ease, transform 160ms ease;
-    pointer-events: none;
-    z-index: 50;
+  .metadata-card img {
+    width: 44px; height: 44px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: var(--paper-dim);
+    flex-shrink: 0;
   }
-  .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.err { background: var(--danger); }
+  .metadata-card .mtitle { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .metadata-card .msub { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag {
+    font-size: 11px;
+    background: var(--teal-soft);
+    color: var(--teal);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .raw-toggle {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    display: inline-block;
+    margin-top: 4px;
+  }
+  #rawPanel {
+    display: none;
+    margin-top: 12px;
+  }
+  #rawPanel pre {
+    background: var(--ink);
+    color: #C9D6E3;
+    padding: 16px;
+    border-radius: 3px;
+    font-size: 12px;
+    overflow-x: auto;
+    max-height: 480px;
+  }
+  #rawCopyBtn {
+    font-size: 12px;
+    color: var(--text-dim);
+    background: none;
+    border: 1px solid var(--line);
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 11.5px;
+    color: #9A9C93;
+    margin-top: 50px;
+    font-family: var(--mono);
+  }
+
+  .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  margin: 3px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tag-kind {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.tag-value {
+  font-weight: 500;
+}
+
+.tag-doc {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.tag-cred {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.tag-wallet {
+  background: #fef3c7;
+  color: #b45309;
+}
 </style>
 </head>
 <body>
 
-<div class="app-shell">
-  <aside class="sidebar">
-    <div class="brand">Certificate Policy Generator
-      <div class="sub">local · offline · zero dependencies</div>
-    </div>
-    <div id="dropzone">
-      <div class="dz-title">Drop certificates here</div>
-      <div class="dz-sub">.cer · .crt · .der · .pem — or click to browse</div>
-    </div>
-    <input type="file" id="fileInput" accept=".cer,.crt,.der,.pem" multiple>
-    <div class="sidebar-section-label">Certificates</div>
-    <div id="certList"><div class="empty-list-hint">No certificates loaded yet.</div></div>
-  </aside>
-
-  <main class="main">
-    <div class="topbar">
-      <div class="status" id="statusLine">0 certificates loaded</div>
-      <button class="btn btn-primary" id="downloadAllBtn" disabled>Download All (ZIP)</button>
-    </div>
-    <div class="content"><div class="content-inner" id="content">
-      <div class="empty-state">
-        <h2>No certificate selected</h2>
-        <p>Drag and drop one or more certificate files into the sidebar, then select one to edit its issuer policy.</p>
-      </div>
-    </div></div>
-  </main>
+<div class="topbar">
+  <div class="brand"><span class="mark"></span>VICAL Viewer</div>
+  <div class="tag">offline · no external dependencies</div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="wrap">
+
+  <div id="dropzone">
+    <h2>Drop a VICAL file to inspect it</h2>
+    <p>Accepts a COSE-signed VICAL (.cbor) — decodes the trust list header and every listed IACA certificate, entirely in your browser.</p>
+    <div class="btn" id="browseBtn">Choose file…</div>
+    <input type="file" id="fileInput" accept=".cbor,.vical,application/cbor">
+    <div class="hint">Nothing is uploaded anywhere — parsing happens locally.</div>
+  </div>
+
+  <div id="error"></div>
+
+  <div id="app">
+
+    <div class="summary-head">
+      <div>
+        <h1 id="providerName">—</h1>
+        <div class="sub" id="fileNameSub">—</div>
+      </div>
+      <div class="reset-link" id="resetLink">load a different file</div>
+    </div>
+
+    <div class="meta-grid" id="metaGrid"></div>
+
+    <section class="block">
+      <h3>VICAL Signer Certificate</h3>
+      <div class="signer-card" id="signerCard"></div>
+    </section>
+
+    <section class="block">
+      <h3 id="certListHeading">Listed Certificate Authorities</h3>
+      <div id="certList"></div>
+    </section>
+
+    <section class="block">
+      <span class="raw-toggle" id="rawToggle">show decoded raw structure (JSON)</span>
+      <div id="rawPanel">
+        <button id="rawCopyBtn">copy JSON</button>
+        <pre id="rawJson"></pre>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    VICAL Viewer — parses COSE_Sign1 / CBOR / X.509 DER locally in the browser. No data leaves this page.
+    <br>© <span id="copyYear"></span> Nikhil Bohra
+  </footer>
+  <script>document.getElementById('copyYear').textContent = new Date().getFullYear();</script>
+</div>
 
 <script>
 'use strict';
 
 /* =========================================================================
-   Core utilities — SHA-256, base64, PEM/DER, X.509, CRC32/ZIP
-   No external dependencies; everything below is plain, verifiable JS.
+   1. Minimal dependency-free CBOR decoder (RFC 8949 subset for COSE/VICAL)
    ========================================================================= */
+function decodeCBOR(buf) {
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let offset = 0;
 
-function sha256(bytes) {
-  const K = new Uint32Array([
-    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-  ]);
-  let H = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
-  const bitLen = bytes.length * 8;
-  const withOne = bytes.length + 1;
-  const padLen = ((withOne + 8 + 63) & ~63);
-  const msg = new Uint8Array(padLen);
-  msg.set(bytes);
-  msg[bytes.length] = 0x80;
-  const view = new DataView(msg.buffer);
-  view.setUint32(padLen - 4, bitLen >>> 0, false);
-  view.setUint32(padLen - 8, Math.floor(bitLen / 0x100000000), false);
-  const w = new Uint32Array(64);
-  for (let offset = 0; offset < padLen; offset += 64) {
-    for (let i = 0; i < 16; i++) w[i] = view.getUint32(offset + i * 4, false);
-    for (let i = 16; i < 64; i++) {
-      const s0 = rotr(w[i-15],7) ^ rotr(w[i-15],18) ^ (w[i-15] >>> 3);
-      const s1 = rotr(w[i-2],17) ^ rotr(w[i-2],19) ^ (w[i-2] >>> 10);
-      w[i] = (w[i-16] + s0 + w[i-7] + s1) >>> 0;
-    }
-    let [a,b,c,d,e,f,g,h] = H;
-    for (let i = 0; i < 64; i++) {
-      const S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
-      const ch = (e & f) ^ (~e & g);
-      const temp1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
-      const S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
-      const maj = (a & b) ^ (a & c) ^ (b & c);
-      const temp2 = (S0 + maj) >>> 0;
-      h=g; g=f; f=e; e=(d+temp1)>>>0; d=c; c=b; b=a; a=(temp1+temp2)>>>0;
-    }
-    H[0]=(H[0]+a)>>>0; H[1]=(H[1]+b)>>>0; H[2]=(H[2]+c)>>>0; H[3]=(H[3]+d)>>>0;
-    H[4]=(H[4]+e)>>>0; H[5]=(H[5]+f)>>>0; H[6]=(H[6]+g)>>>0; H[7]=(H[7]+h)>>>0;
+  function readUint(len) {
+    let v = 0n;
+    for (let i = 0; i < len; i++) v = (v << 8n) | BigInt(buf[offset++]);
+    return v;
   }
-  const out = new Uint8Array(32);
-  const ov = new DataView(out.buffer);
-  for (let i = 0; i < 8; i++) ov.setUint32(i * 4, H[i], false);
-  return out;
-}
-function rotr(x, n) { return ((x >>> n) | (x << (32 - n))) >>> 0; }
-function toHexColon(bytes) { return Array.from(bytes).map(b => b.toString(16).padStart(2,'0').toUpperCase()).join(':'); }
+  function toNumberIfSafe(bi) {
+    return (bi <= BigInt(Number.MAX_SAFE_INTEGER) && bi >= -BigInt(Number.MAX_SAFE_INTEGER)) ? Number(bi) : bi;
+  }
+  function readLength(ai) {
+    if (ai < 24) return BigInt(ai);
+    if (ai === 24) return readUint(1);
+    if (ai === 25) return readUint(2);
+    if (ai === 26) return readUint(4);
+    if (ai === 27) return readUint(8);
+    if (ai === 31) return -1n;
+    throw new Error('Invalid additional info: ' + ai);
+  }
+  function readFloat16() {
+    const half = view.getUint16(offset, false);
+    const sign = (half & 0x8000) ? -1 : 1;
+    const exp = (half >> 10) & 0x1f;
+    const frac = half & 0x3ff;
+    let val;
+    if (exp === 0) val = sign * Math.pow(2, -14) * (frac / 1024);
+    else if (exp === 0x1f) val = frac ? NaN : sign * Infinity;
+    else val = sign * Math.pow(2, exp - 15) * (1 + frac / 1024);
+    offset += 2;
+    return val;
+  }
+  function readIndefiniteBytes() {
+    const chunks = []; let total = 0;
+    while (buf[offset] !== 0xff) { const c = decodeItem(); chunks.push(c); total += c.length; }
+    offset++;
+    const out = new Uint8Array(total); let p = 0;
+    for (const c of chunks) { out.set(c, p); p += c.length; }
+    return out;
+  }
+  function readIndefiniteText() {
+    let out = ''; while (buf[offset] !== 0xff) out += decodeItem(); offset++; return out;
+  }
+  function bytesToBigIntUnsigned(bytes) {
+    let v = 0n; for (const b of bytes) v = (v << 8n) | BigInt(b); return v;
+  }
+  function handleTag(tag, value) {
+    if (tag === 0) return { __tag: 0, type: 'date-string', value };
+    if (tag === 1) return { __tag: 1, type: 'epoch', value };
+    if (tag === 2) return { __tag: 2, type: 'bignum', value: bytesToBigIntUnsigned(value) };
+    if (tag === 3) return { __tag: 3, type: 'negbignum', value: -1n - bytesToBigIntUnsigned(value) };
+    return { __tag: tag, type: 'unknown', value };
+  }
 
-function bytesToBase64(bytes) {
-  let binary = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-  return btoa(binary);
-}
-function base64ToBytes(b64) {
-  const binary = atob(b64);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
+  function decodeItem() {
+    const initial = buf[offset++];
+    const majorType = initial >> 5;
+    const ai = initial & 0x1f;
+    switch (majorType) {
+      case 0: return toNumberIfSafe(readLength(ai));
+      case 1: return toNumberIfSafe(-1n - readLength(ai));
+      case 2: {
+        const len = readLength(ai);
+        if (len === -1n) return readIndefiniteBytes();
+        const l = Number(len); const out = buf.slice(offset, offset + l); offset += l; return out;
+      }
+      case 3: {
+        const len = readLength(ai);
+        if (len === -1n) return readIndefiniteText();
+        const l = Number(len); const out = buf.slice(offset, offset + l); offset += l;
+        return new TextDecoder().decode(out);
+      }
+      case 4: {
+        const len = readLength(ai); const arr = [];
+        if (len === -1n) { while (buf[offset] !== 0xff) arr.push(decodeItem()); offset++; }
+        else { const l = Number(len); for (let i = 0; i < l; i++) arr.push(decodeItem()); }
+        return arr;
+      }
+      case 5: {
+        const len = readLength(ai); const map = new Map();
+        if (len === -1n) { while (buf[offset] !== 0xff) { const k = decodeItem(); const v = decodeItem(); map.set(k, v); } offset++; }
+        else { const l = Number(len); for (let i = 0; i < l; i++) { const k = decodeItem(); const v = decodeItem(); map.set(k, v); } }
+        return map;
+      }
+      case 6: { const tag = Number(readLength(ai)); const value = decodeItem(); return handleTag(tag, value); }
+      case 7: {
+        if (ai === 20) return false;
+        if (ai === 21) return true;
+        if (ai === 22) return null;
+        if (ai === 23) return undefined;
+        if (ai === 25) return readFloat16();
+        if (ai === 26) { const v = view.getFloat32(offset, false); offset += 4; return v; }
+        if (ai === 27) { const v = view.getFloat64(offset, false); offset += 8; return v; }
+        if (ai === 24) { offset += 1; return null; }
+        throw new Error('Unsupported simple type: ' + ai);
+      }
+      default: throw new Error('Unsupported major type: ' + majorType);
+    }
+  }
+
+  const result = decodeItem();
+  return { value: result, bytesConsumed: offset };
 }
 
-function isLikelyPemText(bytes) {
-  const head = Array.from(bytes.subarray(0, 64)).map(b => String.fromCharCode(b)).join('');
-  return head.indexOf('-----BEGIN') !== -1;
-}
-function pemToDer(pemText) {
-  const match = pemText.match(/-----BEGIN CERTIFICATE-----([\s\S]*?)-----END CERTIFICATE-----/);
-  if (!match) throw new Error('No CERTIFICATE block found in PEM text.');
-  const b64 = match[1].replace(/[\r\n\s]/g, '');
-  return base64ToBytes(b64);
-}
-function derToPem(derBytes) {
-  const b64 = bytesToBase64(derBytes);
-  const lines = [];
-  for (let i = 0; i < b64.length; i += 64) lines.push(b64.slice(i, i + 64));
-  return '-----BEGIN CERTIFICATE-----\n' + lines.join('\n') + '\n-----END CERTIFICATE-----\n';
-}
-
-const OID_NAMES = { '2.5.4.3':'CN','2.5.4.6':'C','2.5.4.7':'L','2.5.4.8':'ST','2.5.4.10':'O','2.5.4.11':'OU','2.5.4.5':'serialNumber' };
+/* =========================================================================
+   2. Minimal dependency-free ASN.1 DER parser + X.509 certificate reader
+   ========================================================================= */
+const OID_NAMES = {
+  '1.2.840.10045.2.1': 'ecPublicKey',
+  '1.2.840.10045.4.3.1': 'ecdsa-with-SHA224',
+  '1.2.840.10045.4.3.2': 'ecdsa-with-SHA256',
+  '1.2.840.10045.4.3.3': 'ecdsa-with-SHA384',
+  '1.2.840.10045.4.3.4': 'ecdsa-with-SHA512',
+  '1.2.840.10045.3.1.7': 'P-256 (secp256r1)',
+  '1.3.132.0.34': 'P-384 (secp384r1)',
+  '1.3.132.0.35': 'P-521 (secp521r1)',
+  '1.2.840.113549.1.1.1': 'rsaEncryption',
+  '1.2.840.113549.1.1.11': 'sha256WithRSAEncryption',
+  '1.2.840.113549.1.1.12': 'sha384WithRSAEncryption',
+  '1.2.840.113549.1.1.13': 'sha512WithRSAEncryption',
+  '2.5.4.3': 'CN', '2.5.4.6': 'C', '2.5.4.7': 'L', '2.5.4.8': 'ST',
+  '2.5.4.10': 'O', '2.5.4.11': 'OU', '2.5.4.5': 'serialNumber',
+  '2.5.29.14': 'subjectKeyIdentifier',
+  '2.5.29.15': 'keyUsage',
+  '2.5.29.17': 'subjectAltName',
+  '2.5.29.18': 'issuerAltName',
+  '2.5.29.19': 'basicConstraints',
+  '2.5.29.31': 'cRLDistributionPoints',
+  '2.5.29.32': 'certificatePolicies',
+  '2.5.29.35': 'authorityKeyIdentifier',
+  '2.5.29.37': 'extKeyUsage',
+  '1.3.6.1.5.5.7.1.1': 'authorityInfoAccess',
+};
 function oidName(oid) { return OID_NAMES[oid] || oid; }
+
 class DERReader {
   constructor(bytes) { this.bytes = bytes; this.pos = 0; }
   eof() { return this.pos >= this.bytes.length; }
@@ -479,13 +643,17 @@ class DERReader {
   readTLV() {
     const tagByte = this.readByte();
     const tagClass = tagByte >> 6;
+    const constructed = !!(tagByte & 0x20);
     let tagNum = tagByte & 0x1f;
-    if (tagNum === 0x1f) { tagNum = 0; let b; do { b = this.readByte(); tagNum = (tagNum << 7) | (b & 0x7f); } while (b & 0x80); }
+    if (tagNum === 0x1f) {
+      tagNum = 0; let b;
+      do { b = this.readByte(); tagNum = (tagNum << 7) | (b & 0x7f); } while (b & 0x80);
+    }
     const length = this.readLength();
     const start = this.pos;
     const value = this.bytes.slice(start, start + length);
     this.pos = start + length;
-    return { tagClass, tagNum, length, value };
+    return { tagClass, constructed, tagNum, length, value };
   }
 }
 function parseOID(bytes) {
@@ -499,13 +667,18 @@ function parseOID(bytes) {
   }
   return parts.join('.');
 }
+function bytesToHex(bytes) { return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(':'); }
 function parseInteger(bytes) { let v = 0n; for (const b of bytes) v = (v << 8n) | BigInt(b); return v; }
 function parseUTCTimeOrGeneralized(bytes, isGeneralized) {
   const s = new TextDecoder().decode(bytes);
   let y, mo, d, h, mi, se;
-  if (isGeneralized) { y=+s.slice(0,4); mo=+s.slice(4,6); d=+s.slice(6,8); h=+s.slice(8,10); mi=+s.slice(10,12); se=+s.slice(12,14); }
-  else { let yy=+s.slice(0,2); y = yy>=50?1900+yy:2000+yy; mo=+s.slice(2,4); d=+s.slice(4,6); h=+s.slice(6,8); mi=+s.slice(8,10); se=+s.slice(10,12); }
-  return new Date(Date.UTC(y, mo-1, d, h, mi, se));
+  if (isGeneralized) {
+    y = +s.slice(0,4); mo = +s.slice(4,6); d = +s.slice(6,8); h = +s.slice(8,10); mi = +s.slice(10,12); se = +s.slice(12,14);
+  } else {
+    let yy = +s.slice(0,2); y = yy >= 50 ? 1900 + yy : 2000 + yy;
+    mo = +s.slice(2,4); d = +s.slice(4,6); h = +s.slice(6,8); mi = +s.slice(8,10); se = +s.slice(10,12);
+  }
+  return new Date(Date.UTC(y, mo - 1, d, h, mi, se));
 }
 function parseName(rdnSeqBytes) {
   const reader = new DERReader(rdnSeqBytes); const parts = [];
@@ -519,16 +692,73 @@ function parseName(rdnSeqBytes) {
       const valTlv = attrReader.readTLV();
       const oid = parseOID(oidTlv.value);
       let strVal;
-      try { strVal = new TextDecoder().decode(valTlv.value); } catch (e) { strVal = Array.from(valTlv.value).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+      try { strVal = new TextDecoder().decode(valTlv.value); } catch (e) { strVal = bytesToHex(valTlv.value); }
       parts.push({ oid, name: oidName(oid), value: strVal });
     }
   }
   return parts;
 }
 function nameToString(parts) { return parts.map(p => p.name + '=' + p.value).join(', '); }
-function nameField(parts, short) { const f = parts.find(p => p.name === short); return f ? f.value : ''; }
+function nameField(parts, short) { const f = parts.find(p => p.name === short); return f ? f.value : null; }
 
-function parseCertBasic(derBytes) {
+function parseExtensions(extBytes) {
+  const reader = new DERReader(extBytes); const exts = [];
+  while (!reader.eof()) {
+    const seq = reader.readTLV();
+    const r = new DERReader(seq.value);
+    const oidTlv = r.readTLV();
+    const oid = parseOID(oidTlv.value);
+    let critical = false; let next = r.readTLV();
+    if (next.tagClass === 0 && next.tagNum === 1) { critical = next.value[0] !== 0; next = r.readTLV(); }
+    exts.push({ oid, name: oidName(oid), critical, valueBytes: next.value });
+  }
+  return exts.map(decorateExtension);
+}
+function decorateExtension(ext) {
+  const out = { oid: ext.oid, name: ext.name, critical: ext.critical, raw: bytesToHex(ext.valueBytes) };
+  try {
+    if (ext.oid === '2.5.29.15') {
+      const r = new DERReader(ext.valueBytes); const bs = r.readTLV();
+      const unusedBits = bs.value[0]; const bits = bs.value.slice(1);
+      const flags = ['digitalSignature','nonRepudiation','keyEncipherment','dataEncipherment','keyAgreement','keyCertSign','cRLSign','encipherOnly','decipherOnly'];
+      const set = []; let bitIndex = 0;
+      for (const byte of bits) {
+        for (let i = 7; i >= 0; i--) {
+          if (bitIndex >= (bits.length * 8 - unusedBits)) break;
+          if ((byte >> i) & 1) set.push(flags[bitIndex] || ('bit' + bitIndex));
+          bitIndex++;
+        }
+      }
+      out.parsed = set;
+    } else if (ext.oid === '2.5.29.19') {
+      const r = new DERReader(ext.valueBytes); const seq = r.readTLV(); const sr = new DERReader(seq.value);
+      let ca = false, pathLen = null;
+      if (!sr.eof()) {
+        const t = sr.readTLV();
+        if (t.tagNum === 1) { ca = t.value[0] !== 0; if (!sr.eof()) { const p = sr.readTLV(); pathLen = Number(parseInteger(p.value)); } }
+        else if (t.tagNum === 2) { pathLen = Number(parseInteger(t.value)); }
+      }
+      out.parsed = { ca, pathLen };
+    } else if (ext.oid === '2.5.29.14') {
+      const r = new DERReader(ext.valueBytes); const os = r.readTLV(); out.parsed = bytesToHex(os.value);
+    } else if (ext.oid === '2.5.29.35') {
+      const r = new DERReader(ext.valueBytes); const seq = r.readTLV(); const sr = new DERReader(seq.value);
+      const parsed = {};
+      while (!sr.eof()) { const t = sr.readTLV(); if (t.tagNum === 0) parsed.keyIdentifier = bytesToHex(t.value); }
+      out.parsed = parsed;
+    } else if (ext.oid === '2.5.29.31') {
+      const text = new TextDecoder('latin1').decode(ext.valueBytes);
+      const matches = text.match(/https?:\/\/[^\s\x00-\x1f\x7f-\xff]+/g);
+      out.parsed = matches || [];
+    } else if (ext.oid === '2.5.29.37') {
+      const r = new DERReader(ext.valueBytes); const seq = r.readTLV(); const sr = new DERReader(seq.value);
+      const oids = []; while (!sr.eof()) { const t = sr.readTLV(); oids.push(oidName(parseOID(t.value))); }
+      out.parsed = oids;
+    }
+  } catch (e) { out.parseError = String(e.message || e); }
+  return out;
+}
+function parseX509(derBytes) {
   const reader = new DERReader(derBytes);
   const cert = reader.readTLV();
   const cr = new DERReader(cert.value);
@@ -542,7 +772,9 @@ function parseCertBasic(derBytes) {
     first = tr.readTLV();
   }
   const serialNumber = parseInteger(first.value);
-  tr.readTLV();
+  const sigAlgInTbs = tr.readTLV();
+  const sar = new DERReader(sigAlgInTbs.value);
+  const sigAlgOid = parseOID(sar.readTLV().value);
   const issuer = parseName(tr.readTLV().value);
   const validityTlv = tr.readTLV();
   const vr2 = new DERReader(validityTlv.value);
@@ -550,489 +782,351 @@ function parseCertBasic(derBytes) {
   const notBefore = parseUTCTimeOrGeneralized(notBeforeTlv.value, notBeforeTlv.tagNum === 24);
   const notAfter = parseUTCTimeOrGeneralized(notAfterTlv.value, notAfterTlv.tagNum === 24);
   const subject = parseName(tr.readTLV().value);
+  const spkiTlv = tr.readTLV();
+  const spr = new DERReader(spkiTlv.value);
+  const air = new DERReader(spr.readTLV().value);
+  const pubKeyAlgOid = parseOID(air.readTLV().value);
+  let curveOid = null;
+  if (!air.eof()) { try { const p = air.readTLV(); if (p.tagNum === 6) curveOid = parseOID(p.value); } catch (e) {} }
+  let extensions = [];
+  while (!tr.eof()) {
+    const t = tr.readTLV();
+    if (t.tagClass === 2 && t.tagNum === 3) {
+      const er = new DERReader(t.value); const extSeq = er.readTLV();
+      extensions = parseExtensions(extSeq.value);
+    }
+  }
   return {
-    version, serialHex: serialNumber.toString(16).toUpperCase(),
+    version, serialNumber: serialNumber.toString(16), serialNumberDec: serialNumber.toString(10),
+    signatureAlgorithm: oidName(sigAlgOid),
     issuer, issuerString: nameToString(issuer),
     subject, subjectString: nameToString(subject),
-    subjectCN: nameField(subject,'CN'), subjectO: nameField(subject,'O'),
-    issuerCN: nameField(issuer,'CN'), issuerO: nameField(issuer,'O'),
     notBefore, notAfter,
+    publicKeyAlgorithm: oidName(pubKeyAlgOid),
+    curve: curveOid ? oidName(curveOid) : null,
+    extensions,
   };
 }
 
-const CRC_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-    table[n] = c >>> 0;
-  }
-  return table;
-})();
-function crc32(bytes) {
-  let crc = 0xFFFFFFFF;
-  for (let i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
-  return (crc ^ 0xFFFFFFFF) >>> 0;
-}
-function dosDateTime(date) {
-  const time = ((date.getHours() & 0x1f) << 11) | ((date.getMinutes() & 0x3f) << 5) | ((date.getSeconds() >> 1) & 0x1f);
-  const dosDate = (((date.getFullYear() - 1980) & 0x7f) << 9) | (((date.getMonth() + 1) & 0xf) << 5) | (date.getDate() & 0x1f);
-  return { time, dosDate };
-}
-function buildZip(files) {
-  const now = new Date();
-  const { time, dosDate } = dosDateTime(now);
-  const localChunks = []; const centralChunks = []; let offset = 0;
-  for (const f of files) {
-    const nameBytes = new TextEncoder().encode(f.name);
-    const crc = crc32(f.data);
-    const size = f.data.length;
-    const local = new Uint8Array(30 + nameBytes.length);
-    const lv = new DataView(local.buffer);
-    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0, true); lv.setUint16(8, 0, true);
-    lv.setUint16(10, time, true); lv.setUint16(12, dosDate, true); lv.setUint32(14, crc, true);
-    lv.setUint32(18, size, true); lv.setUint32(22, size, true);
-    lv.setUint16(26, nameBytes.length, true); lv.setUint16(28, 0, true);
-    local.set(nameBytes, 30);
-    localChunks.push(local, f.data);
-
-    const central = new Uint8Array(46 + nameBytes.length);
-    const cv = new DataView(central.buffer);
-    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
-    cv.setUint16(8, 0, true); cv.setUint16(10, 0, true); cv.setUint16(12, time, true); cv.setUint16(14, dosDate, true);
-    cv.setUint32(16, crc, true); cv.setUint32(20, size, true); cv.setUint32(24, size, true);
-    cv.setUint16(28, nameBytes.length, true); cv.setUint16(30, 0, true); cv.setUint16(32, 0, true);
-    cv.setUint16(34, 0, true); cv.setUint16(36, 0, true); cv.setUint32(38, 0, true); cv.setUint32(42, offset, true);
-    central.set(nameBytes, 46);
-    centralChunks.push(central);
-    offset += local.length + f.data.length;
-  }
-  const centralStart = offset;
-  let centralSize = 0;
-  for (const c of centralChunks) centralSize += c.length;
-  const end = new Uint8Array(22);
-  const ev = new DataView(end.buffer);
-  ev.setUint32(0, 0x06054b50, true); ev.setUint16(4,0,true); ev.setUint16(6,0,true);
-  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
-  ev.setUint32(12, centralSize, true); ev.setUint32(16, centralStart, true); ev.setUint16(20, 0, true);
-  const totalLen = offset + centralSize + end.length;
-  const out = new Uint8Array(totalLen);
-  let p = 0;
-  for (const c of localChunks) { out.set(c, p); p += c.length; }
-  for (const c of centralChunks) { out.set(c, p); p += c.length; }
-  out.set(end, p);
-  return out;
-}
-
 /* =========================================================================
-   Default policy template
+   3. App logic — VICAL structure walking + rendering
    ========================================================================= */
-function defaultPolicy() {
-  return {
-    issuerMetadata: {
-      country: "US",
-      state: "AR",
-      name: "Arkansas",
-      uniqueIdentifier: "US-Arkansas",
-      webUrl: "https://www.dfa.arkansas.gov/office/driver-services/mobile-id/",
-      logoUrl: "https://www.dfa.arkansas.gov/wp-content/uploads/DFA-Logo-Title.svg",
-      supportedDocTypes: ["org.iso.18013.5.1.mDL"],
-      supportedCredentialTypes: ["Mobile Driving License"],
-      supportedWallets: []
+const $ = (sel) => document.querySelector(sel);
+
+const dropzone = $('#dropzone');
+const fileInput = $('#fileInput');
+const errorBox = $('#error');
+const appEl = $('#app');
+
+$('#browseBtn').addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('click', (e) => { if (e.target.id !== 'browseBtn') fileInput.click(); });
+fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => {
+  e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragging');
+}));
+['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, (e) => {
+  e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragging');
+}));
+dropzone.addEventListener('drop', (e) => {
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+$('#resetLink').addEventListener('click', () => {
+  appEl.style.display = 'none';
+  dropzone.style.display = 'block';
+  errorBox.style.display = 'none';
+  fileInput.value = '';
+});
+
+$('#rawToggle').addEventListener('click', () => {
+  const panel = $('#rawPanel');
+  const open = panel.style.display === 'block';
+  panel.style.display = open ? 'none' : 'block';
+  $('#rawToggle').textContent = open ? 'show decoded raw structure (JSON)' : 'hide decoded raw structure (JSON)';
+});
+$('#rawCopyBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText($('#rawJson').textContent).then(() => {
+    const btn = $('#rawCopyBtn'); const old = btn.textContent;
+    btn.textContent = 'copied'; setTimeout(() => btn.textContent = old, 1200);
+  });
+});
+
+function showError(msg) {
+  errorBox.textContent = msg;
+  errorBox.style.display = 'block';
+  appEl.style.display = 'none';
+}
+
+function handleFile(file) {
+  errorBox.style.display = 'none';
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const bytes = new Uint8Array(reader.result);
+      const parsed = parseVical(bytes);
+      renderApp(parsed, file.name);
+    } catch (e) {
+      console.error(e);
+      showError('Could not parse this file as a VICAL COSE_Sign1/CBOR structure. ' + (e.message || e));
     }
   };
+  reader.onerror = () => showError('Could not read the file.');
+  reader.readAsArrayBuffer(file);
 }
 
-/* =========================================================================
-   App state + file handling
-   ========================================================================= */
-const $ = (sel, root) => (root || document).querySelector(sel);
-const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
-
-const state = { certs: [], selectedId: null, nextId: 1 };
-
-function baseNameOf(filename) {
-  const idx = filename.lastIndexOf('.');
-  return idx > 0 ? filename.slice(0, idx) : filename;
-}
-function uniqueBaseName(base) {
-  const existing = new Set(state.certs.map(c => c.baseName));
-  if (!existing.has(base)) return base;
-  let i = 2;
-  while (existing.has(base + '-' + i)) i++;
-  return base + '-' + i;
-}
-
-function addFiles(fileList) {
-  const files = Array.from(fileList);
-  let firstNewId = null;
-  let pending = files.length;
-  if (pending === 0) return;
-  files.forEach((file) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const raw = new Uint8Array(reader.result);
-        let derBytes;
-        if (isLikelyPemText(raw)) {
-          const text = new TextDecoder().decode(raw);
-          derBytes = pemToDer(text);
-        } else {
-          derBytes = raw;
-        }
-        const pemText = derToPem(derBytes);
-        let info = null, parseError = null;
-        try { info = parseCertBasic(derBytes); }
-        catch (e) { parseError = String(e.message || e); }
-        const fingerprint = toHexColon(sha256(derBytes));
-
-        const cert = {
-          id: state.nextId++,
-          originalName: file.name,
-          baseName: uniqueBaseName(baseNameOf(file.name)),
-          derBytes, pemText, info, parseError, fingerprint,
-          policy: defaultPolicy(),
-        };
-        state.certs.push(cert);
-        if (firstNewId === null) firstNewId = cert.id;
-      } catch (e) {
-        state.certs.push({
-          id: state.nextId++,
-          originalName: file.name,
-          baseName: uniqueBaseName(baseNameOf(file.name)),
-          derBytes: null, pemText: null, info: null,
-          parseError: 'Could not read this file as a certificate: ' + (e.message || e),
-          fingerprint: null,
-          policy: defaultPolicy(),
-        });
-      } finally {
-        pending--;
-        if (pending === 0) {
-          if (state.selectedId === null && firstNewId !== null) state.selectedId = firstNewId;
-          renderSidebar();
-          renderContent();
-        }
-      }
-    };
-    reader.onerror = () => { pending--; if (pending === 0) { renderSidebar(); renderContent(); } };
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function removeCert(id) {
-  state.certs = state.certs.filter(c => c.id !== id);
-  if (state.selectedId === id) state.selectedId = state.certs.length ? state.certs[0].id : null;
-  renderSidebar();
-  renderContent();
-}
-
-function getSelected() { return state.certs.find(c => c.id === state.selectedId) || null; }
-
-/* =========================================================================
-   Rendering — sidebar
-   ========================================================================= */
-function statusLine() {
-  const n = state.certs.length;
-  $('#statusLine').textContent = n === 0 ? '0 certificates loaded' : n + ' certificate' + (n === 1 ? '' : 's') + ' loaded';
-  $('#downloadAllBtn').disabled = n === 0;
-}
-
-function renderSidebar() {
-  const listEl = $('#certList');
-  statusLine();
-  if (state.certs.length === 0) {
-    listEl.innerHTML = '<div class="empty-list-hint">No certificates loaded yet.</div>';
-    return;
+// Convert Map-based CBOR result to a plain JSON-serializable structure for the raw viewer.
+function cborToPlain(v) {
+  if (v instanceof Uint8Array) return '0x' + bytesToHex(v).replace(/:/g, '');
+  if (typeof v === 'bigint') return v.toString();
+  if (v && v.__tag !== undefined) {
+    if (v.type === 'date-string') return v.value;
+    if (v.type === 'bignum' || v.type === 'negbignum') return v.value.toString();
+    return { tag: v.__tag, value: cborToPlain(v.value) };
   }
-  listEl.innerHTML = '';
-  state.certs.forEach((c) => {
-    const item = document.createElement('div');
-    item.className = 'cert-list-item' + (c.id === state.selectedId ? ' active' : '');
-    const cn = c.info ? c.info.subjectCN : c.originalName;
-    const sub = c.info ? c.info.issuerCN || c.info.subjectO : (c.parseError ? 'parse error' : '');
-    item.innerHTML =
-      '<div class="cl-row">' +
-        '<span class="cl-dot' + (c.parseError ? ' error' : '') + '"></span>' +
-        '<span class="cl-name">' + esc(cn || c.originalName) + '</span>' +
-        '<span class="cl-remove" title="Remove">&times;</span>' +
-      '</div>' +
-      '<div class="cl-sub">' + esc(sub || c.originalName) + '</div>';
-    item.addEventListener('click', (e) => {
-      if (e.target.classList.contains('cl-remove')) { removeCert(c.id); return; }
-      state.selectedId = c.id;
-      renderSidebar();
-      renderContent();
-    });
-    listEl.appendChild(item);
-  });
+  if (Array.isArray(v)) return v.map(cborToPlain);
+  if (v instanceof Map) {
+    const o = {};
+    for (const [k, val] of v.entries()) o[String(k)] = cborToPlain(val);
+    return o;
+  }
+  return v;
 }
 
-/* =========================================================================
-   Rendering — main content (details + policy editor + JSON preview)
-   ========================================================================= */
+function cborDateToJS(v) {
+  if (v && v.__tag === 0) return new Date(v.value);
+  if (typeof v === 'string') return new Date(v);
+  return null;
+}
+
+function parseVical(bytes) {
+  const top = decodeCBOR(bytes).value;
+  if (!Array.isArray(top) || top.length !== 4) {
+    throw new Error('Expected a 4-element COSE_Sign1 array [protected, unprotected, payload, signature].');
+  }
+  const [protectedBytes, unprotected, payloadBytes, signature] = top;
+  const protectedHeader = protectedBytes.length ? decodeCBOR(protectedBytes).value : new Map();
+
+  let signerCert = null;
+  if (unprotected instanceof Map && unprotected.has(33)) {
+    const x5 = unprotected.get(33);
+    const der = Array.isArray(x5) ? x5[0] : x5; // x5chain can be single cert or array
+    try { signerCert = parseX509(der); } catch (e) { signerCert = { error: String(e.message || e) }; }
+  }
+
+  const payload = decodeCBOR(payloadBytes).value;
+  if (!(payload instanceof Map)) throw new Error('VICAL payload is not a CBOR map.');
+
+  const certInfosRaw = payload.get('certificateInfos') || [];
+  const certificates = certInfosRaw.map((ci) => {
+    const certDer = ci.get('certificate');
+    let x509 = null, x509Error = null;
+    try { x509 = parseX509(certDer); } catch (e) { x509Error = String(e.message || e); }
+    const extensions = ci.get('extensions');
+    let issuerMetadata = null;
+    if (extensions instanceof Map && extensions.has('issuerMetadata')) {
+      const im = extensions.get('issuerMetadata');
+      issuerMetadata = im instanceof Map ? Object.fromEntries(im.entries()) : im;
+    }
+    return {
+      issuingAuthority: ci.get('issuingAuthority'),
+      issuingCountry: ci.get('issuingCountry'),
+      stateOrProvinceName: ci.get('stateOrProvinceName'),
+      serialNumberCbor: ci.get('serialNumber'),
+      ski: ci.get('ski'),
+      notBefore: cborDateToJS(ci.get('notBefore')),
+      notAfter: cborDateToJS(ci.get('notAfter')),
+      issuerMetadata,
+      x509, x509Error,
+      certDerLength: certDer ? certDer.length : 0,
+    };
+  });
+
+  return {
+    coseAlgorithm: protectedHeader instanceof Map ? protectedHeader.get(1) : undefined,
+    signerCert,
+    signatureLength: signature ? signature.length : 0,
+    provider: payload.get('vicalProvider'),
+    version: payload.get('version'),
+    date: cborDateToJS(payload.get('date')),
+    issueId: payload.get('vicalIssueID'),
+    nextUpdate: cborDateToJS(payload.get('nextUpdate')),
+    certificates,
+    rawTop: top,
+    rawPayload: payload,
+  };
+}
+
+const COSE_ALGS = { '-7': 'ES256', '-35': 'ES384', '-36': 'ES512', '-37': 'PS256', '-257': 'RS256' };
+
+function fmtDate(d) {
+  if (!d || isNaN(d.getTime())) return '—';
+  return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
+}
+function fmtDateShort(d) {
+  if (!d || isNaN(d.getTime())) return '—';
+  return d.toISOString().slice(0, 10);
+}
+function daysUntil(d) {
+  if (!d) return null;
+  return Math.round((d.getTime() - Date.now()) / 86400000);
+}
+function statusPillFor(notAfter) {
+  const days = daysUntil(notAfter);
+  if (days === null) return { cls: 'warn', label: 'unknown' };
+  if (days < 0) return { cls: 'bad', label: 'expired' };
+  if (days < 60) return { cls: 'warn', label: 'expires in ' + days + 'd' };
+  return { cls: 'ok', label: 'valid' };
+}
 function esc(s) {
   if (s === null || s === undefined) return '';
   return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function fmtDate(d) {
-  if (!d || isNaN(d.getTime())) return '—';
-  return d.toISOString().replace('T',' ').replace(/\.\d+Z$/, ' UTC');
-}
 
-let jsonDebounceTimer = null;
-let jsonHasFocus = false;
+function renderApp(data, fileName) {
+  dropzone.style.display = 'none';
+  appEl.style.display = 'block';
 
-function renderContent() {
-  const cert = getSelected();
-  const content = $('#content');
-  if (!cert) {
-    content.innerHTML =
-      '<div class="empty-state"><h2>No certificate selected</h2>' +
-      '<p>Drag and drop one or more certificate files into the sidebar, then select one to edit its issuer policy.</p></div>';
-    return;
+  $('#providerName').textContent = data.provider || 'VICAL';
+  $('#fileNameSub').textContent = fileName + ' · ' + data.certificates.length + ' certificate authorit' + (data.certificates.length === 1 ? 'y' : 'ies');
+
+  const nextUpdateDays = daysUntil(data.nextUpdate);
+  const nextUpdatePill = nextUpdateDays === null ? '' :
+    nextUpdateDays < 0 ? '<span class="status-pill bad"><span class="dot"></span>overdue</span>' :
+    nextUpdateDays < 3 ? '<span class="status-pill warn"><span class="dot"></span>due soon</span>' :
+    '<span class="status-pill ok"><span class="dot"></span>current</span>';
+
+  const metaCells = [
+    ['VICAL version', esc(data.version)],
+    ['Issue ID', esc(data.issueId)],
+    ['Issued', fmtDate(data.date)],
+    ['Next update', fmtDate(data.nextUpdate) + (nextUpdatePill ? '<br>' + nextUpdatePill : '')],
+    ['Signature alg', esc(COSE_ALGS[String(data.coseAlgorithm)] || data.coseAlgorithm)],
+    ['Certificates listed', String(data.certificates.length)],
+  ];
+  $('#metaGrid').innerHTML = metaCells.map(([k, v]) =>
+    '<div class="meta-cell"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div></div>'
+  ).join('');
+
+  const sc = data.signerCert;
+  if (sc && !sc.error) {
+    const pill = statusPillFor(sc.notAfter);
+    $('#signerCard').innerHTML = `
+      <div class="row"><div class="k">Subject</div><div class="v">${esc(sc.subjectString)}</div></div>
+      <div class="row"><div class="k">Issuer</div><div class="v">${esc(sc.issuerString)}</div></div>
+      <div class="row"><div class="k">Serial</div><div class="v">${esc(sc.serialNumber)}</div></div>
+      <div class="row"><div class="k">Validity</div><div class="v">${fmtDateShort(sc.notBefore)} → ${fmtDateShort(sc.notAfter)} &nbsp; <span class="status-pill ${pill.cls}"><span class="dot"></span>${pill.label}</span></div></div>
+      <div class="row"><div class="k">Key</div><div class="v">${esc(sc.publicKeyAlgorithm)}${sc.curve ? ' · ' + esc(sc.curve) : ''}</div></div>
+      <div class="row"><div class="k">Signature alg</div><div class="v">${esc(sc.signatureAlgorithm)}</div></div>
+    `;
+  } else {
+    $('#signerCard').innerHTML = '<div class="row"><div class="k">—</div><div class="v" style="color:var(--text-dim)">No signer certificate (x5chain) present in the COSE unprotected header.</div></div>';
   }
 
-  content.innerHTML =
-    '<div class="card" id="detailsCard"></div>' +
-    '<div class="card">' +
-      '<h3>Issuer Policy</h3>' +
-      '<div class="form-grid" id="formGrid"></div>' +
-    '</div>' +
-    '<div class="card">' +
-      '<div class="json-toolbar"><h3 style="margin:0">JSON Preview / Raw Edit</h3></div>' +
-      '<div class="json-error" id="jsonError"></div>' +
-      '<textarea id="jsonTextarea" spellcheck="false"></textarea>' +
-    '</div>' +
-    '<div class="action-row">' +
-      '<button class="btn btn-primary" id="savePolicyBtn">Save / Download Policy</button>' +
-      '<button class="btn btn-outline" id="downloadPemBtn">Download PEM</button>' +
-    '</div>';
+  const listEl = $('#certList');
+  listEl.innerHTML = '';
+  data.certificates.forEach((c, idx) => {
+    const x = c.x509;
+    const cn = x ? nameField(x.subject, 'CN') : c.issuingAuthority;
+    const org = x ? nameField(x.subject, 'O') : '';
+    const country = c.issuingCountry || (x ? nameField(x.subject, 'C') : '') || '—';
+    const notAfter = c.notAfter || (x ? x.notAfter : null);
+    const notBefore = c.notBefore || (x ? x.notBefore : null);
+    const pill = statusPillFor(notAfter);
 
-  renderDetailsCard(cert);
-  renderFormGrid(cert);
-  renderJsonTextarea(cert);
-
-  $('#savePolicyBtn').addEventListener('click', () => onSavePolicy(cert));
-  $('#downloadPemBtn').addEventListener('click', () => onDownloadPem(cert));
-}
-
-function renderDetailsCard(cert) {
-  const el = $('#detailsCard');
-  const title = '<h3>Certificate Details<span class="file-name">' + esc(cert.originalName) + '</span></h3>';
-  if (!cert.info) {
-    el.innerHTML = title + '<div class="parse-error-msg">' + esc(cert.parseError || 'Unable to parse certificate.') + '</div>';
-    return;
-  }
-  const info = cert.info;
-  const expired = info.notAfter && info.notAfter.getTime() < Date.now();
-  const pill = info.notAfter
-    ? '<span class="validity-pill ' + (expired ? 'bad' : 'ok') + '"><span class="dot"></span>' + (expired ? 'expired' : 'valid') + '</span>'
-    : '';
-  el.innerHTML = title + '<div class="detail-grid">' +
-    field('Common Name (CN)', esc(info.subjectCN) || '—') +
-    field('Organization (O)', esc(info.subjectO) || '—') +
-    field('Issuer', esc(info.issuerString)) +
-    field('Serial Number', esc(info.serialHex)) +
-    field('Validity', esc(fmtDate(info.notBefore)) + ' &rarr; ' + esc(fmtDate(info.notAfter)) + pill, true) +
-    field('SHA-256 Fingerprint', esc(cert.fingerprint), true) +
-  '</div>';
-}
-function field(label, valueHtml, fullRow) {
-  return '<div class="detail-field' + (fullRow ? ' full-row' : '') + '">' +
-    '<div class="k">' + label + '</div><div class="v' + (fullRow ? ' full-row' : '') + '">' + valueHtml + '</div></div>';
-}
-
-const TAG_FIELDS = ['supportedDocTypes', 'supportedCredentialTypes', 'supportedWallets'];
-const TEXT_FIELDS = [
-  ['country', 'Country'], ['state', 'State'], ['name', 'Name'],
-  ['uniqueIdentifier', 'Unique Identifier'], ['webUrl', 'Web URL'], ['logoUrl', 'Logo URL'],
-];
-
-function renderFormGrid(cert) {
-  const grid = $('#formGrid');
-  grid.innerHTML = '';
-  const meta = cert.policy.issuerMetadata;
-
-  TEXT_FIELDS.forEach(([key, label]) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'form-field';
-    wrap.innerHTML = '<label>' + label + '</label><input type="text" data-field="' + key + '">';
-    const input = wrap.querySelector('input');
-    input.value = meta[key] || '';
-    input.addEventListener('input', () => {
-      meta[key] = input.value;
-      syncJsonFromModel(cert);
+    const item = document.createElement('div');
+    item.className = 'cert-item';
+    item.innerHTML = `
+      <div class="cert-header">
+        <div class="country">${esc(country)}</div>
+        <div class="name-block">
+          <div class="cn">${esc(cn || 'Unknown CN')}</div>
+          <div class="org">${esc(org || '')}</div>
+        </div>
+        <div class="validity">${fmtDateShort(notBefore)} → ${fmtDateShort(notAfter)}</div>
+        <span class="status-pill ${pill.cls}"><span class="dot"></span>${pill.label}</span>
+        <div class="chev">▶</div>
+      </div>
+      <div class="cert-body">${renderCertBody(c)}</div>
+    `;
+    item.querySelector('.cert-header').addEventListener('click', () => {
+      item.classList.toggle('open');
     });
-    grid.appendChild(wrap);
+    listEl.appendChild(item);
   });
 
-  const tagLabels = {
-    supportedDocTypes: 'Supported Doc Types',
-    supportedCredentialTypes: 'Supported Credential Types',
-    supportedWallets: 'Supported Wallets',
-  };
-  TAG_FIELDS.forEach((key) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'form-field full';
-    wrap.innerHTML = '<label>' + tagLabels[key] + '</label><div class="tag-input-box" data-field="' + key + '"></div><div class="tag-hint">Press Enter or comma to add</div>';
-    grid.appendChild(wrap);
-    mountTagInput(wrap.querySelector('.tag-input-box'), meta[key] || [], (newTags) => {
-      meta[key] = newTags;
-      syncJsonFromModel(cert);
-    });
-  });
+  $('#rawJson').textContent = JSON.stringify(cborToPlain(data.rawTop), null, 2);
 }
 
-function mountTagInput(box, initialTags, onChange) {
-  let tags = initialTags.slice();
-  function renderChips() {
-    box.querySelectorAll('.tag-chip').forEach(n => n.remove());
-    const input = box.querySelector('input');
-    tags.forEach((t, idx) => {
-      const chip = document.createElement('span');
-      chip.className = 'tag-chip';
-      chip.innerHTML = esc(t) + '<span class="x">&times;</span>';
-      chip.querySelector('.x').addEventListener('click', () => {
-        tags.splice(idx, 1);
-        renderChips();
-        onChange(tags.slice());
-      });
-      box.insertBefore(chip, input);
-    });
+function renderCertBody(c) {
+  const x = c.x509;
+  if (c.x509Error) {
+    return '<div class="field"><div class="k">Certificate parse error</div><div class="v wrap">' + esc(c.x509Error) + '</div></div>';
   }
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = 'add…';
-  box.appendChild(input);
-  function commit() {
-    const v = input.value.trim();
-    if (v) { tags.push(v); input.value = ''; renderChips(); onChange(tags.slice()); }
+  const extRows = (x.extensions || []).map(e => {
+    let val;
+    if (e.parsed !== undefined) {
+      if (Array.isArray(e.parsed)) val = e.parsed.join(', ');
+      else if (typeof e.parsed === 'object') val = Object.entries(e.parsed).map(([k,v]) => k + '=' + v).join(', ');
+      else val = String(e.parsed);
+    } else { val = e.raw; }
+    return '<tr><td>' + esc(e.name) + '</td><td class="crit">' + (e.critical ? '<span class="crit-yes">yes</span>' : '<span class="crit-no">no</span>') + '</td><td>' + esc(val) + '</td></tr>';
+  }).join('');
+
+  let metaCard = '';
+  const im = c.issuerMetadata;
+  if (im) {
+    const logo = im.logoUrl ? `<img src="${esc(im.logoUrl)}" onerror="this.style.display='none'">` : '';
+   const tags = []
+  .concat((im.supportedDocTypes || []).map(t => ({t, kind: 'doc'})))
+  .concat((im.supportedCredentialTypes || []).map(t => ({t, kind: 'cred'})))
+  .concat((im.supportedWallets || []).map(t => ({t, kind: 'wallet'})));
+
+metaCard = `
+  <div class="metadata-card">
+    ${logo}
+    <div>
+      <div class="mtitle">${esc(im.name || '')}</div>
+      <div class="msub">
+        ${esc(im.uniqueIdentifier || '')}
+        ${im.webUrl ? ' · <a href="' + esc(im.webUrl) + '" target="_blank" rel="noopener">' + esc(im.webUrl) + '</a>' : ''}
+      </div>
+
+      <div class="tag-list">
+        ${tags.map(x =>
+          `<span class="tag tag-${x.kind}">${esc(x.t)}</span>`
+        ).join('')}
+      </div>
+    </div>
+  </div>`;
   }
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit(); }
-    else if (e.key === 'Backspace' && input.value === '' && tags.length) {
-      tags.pop(); renderChips(); onChange(tags.slice());
-    }
-  });
-  input.addEventListener('blur', commit);
-  renderChips();
+
+
+
+  return `
+    <div class="detail-grid">
+      <div>
+        <div class="field"><div class="k">Subject (Distinguished Name)</div><div class="v wrap">${esc(x.subjectString)}</div></div>
+        <div class="field"><div class="k">Issuer</div><div class="v wrap">${esc(x.issuerString)}</div></div>
+        <div class="field"><div class="k">Serial number</div><div class="v">${esc(x.serialNumber)}<br><span style="color:var(--text-dim)">${esc(x.serialNumberDec)}</span></div></div>
+        <div class="field"><div class="k">X.509 version</div><div class="v">v${esc(x.version)}</div></div>
+      </div>
+      <div>
+        <div class="field"><div class="k">Validity</div><div class="v">${fmtDate(x.notBefore)}<br>→ ${fmtDate(x.notAfter)}</div></div>
+        <div class="field"><div class="k">Public key</div><div class="v">${esc(x.publicKeyAlgorithm)}${x.curve ? '<br>' + esc(x.curve) : ''}</div></div>
+        <div class="field"><div class="k">Signature algorithm</div><div class="v">${esc(x.signatureAlgorithm)}</div></div>
+        <div class="field"><div class="k">Subject Key Identifier (SKI)</div><div class="v">${esc(c.ski ? bytesToHex(c.ski) : '—')}</div></div>
+      </div>
+    </div>
+    <div class="field"><div class="k">X.509 Extensions</div></div>
+    <table class="ext-table">
+      <thead><tr><th>Extension</th><th>Critical</th><th>Value</th></tr></thead>
+      <tbody>${extRows}</tbody>
+    </table>
+    ${metaCard}
+  `;
 }
-
-function renderJsonTextarea(cert) {
-  const ta = $('#jsonTextarea');
-  ta.value = JSON.stringify(cert.policy, null, 2);
-  ta.addEventListener('focus', () => { jsonHasFocus = true; });
-  ta.addEventListener('blur', () => { jsonHasFocus = false; });
-  ta.addEventListener('input', () => {
-    clearTimeout(jsonDebounceTimer);
-    jsonDebounceTimer = setTimeout(() => applyJsonEdit(cert), 300);
-  });
-}
-
-function applyJsonEdit(cert) {
-  const ta = $('#jsonTextarea');
-  const errEl = $('#jsonError');
-  if (!ta) return;
-  try {
-    const parsed = JSON.parse(ta.value);
-    if (!parsed || typeof parsed !== 'object' || typeof parsed.issuerMetadata !== 'object') {
-      throw new Error('Expected an object with an "issuerMetadata" field.');
-    }
-    cert.policy = parsed;
-    if (!Array.isArray(cert.policy.issuerMetadata.supportedDocTypes)) cert.policy.issuerMetadata.supportedDocTypes = [];
-    if (!Array.isArray(cert.policy.issuerMetadata.supportedCredentialTypes)) cert.policy.issuerMetadata.supportedCredentialTypes = [];
-    if (!Array.isArray(cert.policy.issuerMetadata.supportedWallets)) cert.policy.issuerMetadata.supportedWallets = [];
-    errEl.style.display = 'none';
-    renderFormGrid(cert);
-  } catch (e) {
-    errEl.textContent = 'Invalid JSON: ' + (e.message || e);
-    errEl.style.display = 'block';
-  }
-}
-
-function syncJsonFromModel(cert) {
-  if (jsonHasFocus) return; // don't fight the user while they're typing raw JSON
-  const ta = $('#jsonTextarea');
-  if (ta) ta.value = JSON.stringify(cert.policy, null, 2);
-}
-
-/* =========================================================================
-   Downloads
-   ========================================================================= */
-function downloadBlob(filename, data, mime) {
-  const blob = new Blob([data], { type: mime || 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function commitPendingJsonEdit(cert) {
-  const ta = $('#jsonTextarea');
-  if (!ta) return true;
-  try {
-    const parsed = JSON.parse(ta.value);
-    if (!parsed || typeof parsed !== 'object' || typeof parsed.issuerMetadata !== 'object') {
-      throw new Error('Expected an object with an "issuerMetadata" field.');
-    }
-    cert.policy = parsed;
-    return true;
-  } catch (e) {
-    showToast('Fix the JSON before saving: ' + (e.message || e), true);
-    return false;
-  }
-}
-
-function onSavePolicy(cert) {
-  if (!commitPendingJsonEdit(cert)) return;
-  const json = JSON.stringify(cert.policy, null, 2);
-  downloadBlob(cert.baseName + '.pem.policy', json, 'application/json');
-  showToast('Policy saved for ' + cert.baseName);
-}
-
-function onDownloadPem(cert) {
-  if (!cert.pemText) { showToast('No valid certificate data to export.', true); return; }
-  downloadBlob(cert.baseName + '.pem', cert.pemText, 'application/x-pem-file');
-}
-
-function onDownloadAll() {
-  const cert = getSelected();
-  if (cert) commitPendingJsonEdit(cert);
-  const files = [];
-  state.certs.forEach((c) => {
-    if (c.pemText) files.push({ name: c.baseName + '.pem', data: new TextEncoder().encode(c.pemText) });
-    files.push({ name: c.baseName + '.pem.policy', data: new TextEncoder().encode(JSON.stringify(c.policy, null, 2)) });
-  });
-  if (files.length === 0) return;
-  const zipBytes = buildZip(files);
-  downloadBlob('certificate-policies.zip', zipBytes, 'application/zip');
-  showToast('Downloaded ' + state.certs.length + ' certificate' + (state.certs.length === 1 ? '' : 's') + ' as ZIP');
-}
-
-let toastTimer = null;
-function showToast(msg, isError) {
-  const t = $('#toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (isError ? ' err' : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.className = 'toast'; }, 2600);
-}
-
-/* =========================================================================
-   Wire up UI events
-   ========================================================================= */
-const dropzone = $('#dropzone');
-const fileInput = $('#fileInput');
-dropzone.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', (e) => { if (e.target.files.length) addFiles(e.target.files); fileInput.value = ''; });
-['dragenter','dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragging'); }));
-['dragleave','drop'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragging'); }));
-dropzone.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
-$('#downloadAllBtn').addEventListener('click', onDownloadAll);
-
-renderSidebar();
-renderContent();
 </script>
 </body>
 </html>
